@@ -1,13 +1,16 @@
 from fastapi import FastAPI, UploadFile, File
-from transformers import pipeline
+# from transformers import pipeline
+from faster_whisper import WhisperModel
 import os
 import torch
 
 app = FastAPI()
 
-model_name = "openai/whisper-medium"  
+# model_name = "openai/whisper-medium"  
+model_size = "medium"
 device = "cuda" if torch.cuda.is_available() else "cpu"
-pipe = pipeline("automatic-speech-recognition", model=model_name, device=device)
+# pipe = pipeline("automatic-speech-recognition", model=model_name, device=device)
+model = WhisperModel(model_size, device=device)
 
 @app.post("/transcribe/")
 async def transcribe_audio(file: UploadFile = File(...)):
@@ -17,8 +20,17 @@ async def transcribe_audio(file: UploadFile = File(...)):
         f.write(await file.read())
 
     #транскрипция аудио
+    # try:
+    #     transcription = pipe(file_location)["text"]
+    #     return {"filename": file.filename, "transcription": transcription}
+    # except Exception as e:
+    #     return {"error": str(e)}
+    # finally:
+    #     if os.path.exists(file_location):
+    #         os.remove(file_location)
     try:
-        transcription = pipe(file_location)["text"]
+        segments, _ = model.transcribe(file_location)
+        transcription = ' '.join([segment.text for segment in segments])
         return {"filename": file.filename, "transcription": transcription}
     except Exception as e:
         return {"error": str(e)}
