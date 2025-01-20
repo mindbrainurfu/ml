@@ -32,7 +32,7 @@ mistral_model, tokenizer, device = load_model()
 
 @app.post("/get_answer_mistral/")
 async def Mistral_get_answer(question: str):
-    answer = generate_answer(question, model, tokenizer, device)
+    answer = generate_answer(question, mistral_model, tokenizer, device)
     return {"answer": answer}
 
 if __name__ == "__main__":
