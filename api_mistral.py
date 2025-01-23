@@ -1,9 +1,11 @@
 from huggingface_hub import login
+import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-login(token='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')
 
-model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+login(token='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')
+model_name = "mistralai/Mistral-7B-Instruct-v0.2"
+
 def load_model():
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -26,13 +28,31 @@ def load_model():
     
     model.save_pretrained("./model")
     tokenizer.save_pretrained("./model")
-    
-    return model, tokenizer, device
 
-def generate_answer(question, model, tokenizer, device):
+    with open("system_prompt.txt", "r", encoding="utf-8") as file:
+        system_prompt = file.read()
+
+    # print(system_prompt)
+    
+    return model, tokenizer, device, system_prompt
+
+def generate_emotion():
+    emotions = ['angry', 'sad', 'neutral', 'positive']
+    probabilities = [0.1, 0.1, 0.7, 0.1]
+    
+    res = np.random.choice(emotions, p = probabilities)
+    # print(f"Выбранное настроение: {res}")
+    
+    res = f"Отвечай клиенту в зависимости от его настроения: {res}."
+    # print(res)
+    return res
+
+def generate_answer(question, model, tokenizer, device, system_prompt):
+    emotion = generate_emotion()
+    system_prompt+=emotion
     messages = [{
         "role":"system",
-        "content": "Вы – оператор онлайн-поддержки. Ваша задача – помогать пользователям, проявляя дружелюбие, вежливость и заботу. Общайтесь уважительно, старайтесь понять ситуацию пользователя и предложить полезное решение. Всегда сохраняйте позитивный тон, даже если пользователь недоволен.  Если пользователь расстроен, поддержите его и выразите сочувствие. Отвечайте понятно, четко и ориентированно на решение проблемы. Будьте внимательны к деталям, обеспечивайте комфортное и приятное взаимодействие."     
+        "content": system_prompt
     }, {
         "role":"user",
         "content": question
@@ -51,5 +71,11 @@ def generate_answer(question, model, tokenizer, device):
     
     decoded = tokenizer.batch_decode(generated_ids)
     
-    return decoded[0]
-
+    response = decoded.replace(system_prompt, "").strip()
+    if "[INST]" in response:
+        response = response.split("[/INST]")[1].strip()
+    else:
+        response = response.strip()
+    
+    return response
+    
