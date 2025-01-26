@@ -1,9 +1,11 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Response
 # from transformers import pipeline
 from faster_whisper import WhisperModel
 import os
 import torch
+from api_fish import process_and_run_commands
 from api_mistral import load_model, generate_answer
+from pydub import AudioSegment
 
 app = FastAPI()
 
@@ -34,6 +36,16 @@ mistral_model, tokenizer, device = load_model()
 async def Mistral_get_answer(question: str):
     answer = generate_answer(question, mistral_model, tokenizer, device)
     return {"answer": answer}
+
+@app.post("/synthesize_answer/")
+async def fish_synthesize_answer(text: str):
+    synthesized_answer = process_and_run_commands(text)
+
+    audio = AudioSegment.from_file(synthesized_answer)
+    audio_bytes = audio.export(format="wav").read()
+
+    return Response(content=audio_bytes, media_type="audio/wav")
+
 
 if __name__ == "__main__":
     import uvicorn
