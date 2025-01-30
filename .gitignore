@@ -4,4 +4,4 @@ venv
 whisper_medium_model
 mistral.ipynb
 checkpoints
-tools
+# tools
