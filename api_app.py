@@ -3,9 +3,12 @@ from fastapi import FastAPI, UploadFile, File, Response
 from faster_whisper import WhisperModel
 import os
 import torch
-from api_fish import process_and_run_commands
+import librosa
+from pathlib import Path
 from api_mistral import load_model, generate_answer
+from api_fish import process_and_run_commands
 from pydub import AudioSegment
+from api_emo import predict_emotion
 
 app = FastAPI()
 
@@ -15,7 +18,6 @@ model = WhisperModel(model_size, device=device)
 
 @app.post("/transcribe/")
 async def transcribe_audio(file: UploadFile = File(...)):
-    #сохранение файла
     file_location = f"./temp/{file.filename}"
     with open(file_location, "wb") as f:
         f.write(await file.read())
@@ -30,17 +32,27 @@ async def transcribe_audio(file: UploadFile = File(...)):
         if os.path.exists(file_location):
             os.remove(file_location)
 
-mistral_model, tokenizer, device = load_model()
+@app.post("/get_emotion/")
+async def get_emotion(file: UploadFile = File(...)):
+    file_location = f"./temp/{file.filename}"
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
 
-@app.post("/get_answer_mistral/")
-async def Mistral_get_answer(question: str):
-    answer = generate_answer(question, mistral_model, tokenizer, device)
+    audio_path = Path(file_location)
+    audio, sr = librosa.load(audio_path, sr=16000)  
+    emotion = predict_emotion(audio, sr)
+    return {'client_emotion': emotion}
+
+mistral_model, tokenizer, device, system_prompt = load_model()
+
+@app.get("/get_answer_mistral/")
+async def mistral_get_answer(question: str):
+    answer = generate_answer(question, mistral_model, tokenizer, device, system_prompt)
     return {"answer": answer}
 
-@app.post("/synthesize_answer/")
+@app.get("/synthesize_answer/")
 async def fish_synthesize_answer(text: str):
     synthesized_answer = process_and_run_commands(text)
-
     audio = AudioSegment.from_file(synthesized_answer)
     audio_bytes = audio.export(format="wav").read()
 
@@ -50,4 +62,3 @@ async def fish_synthesize_answer(text: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=3000)
-
