@@ -49,33 +49,31 @@ def generate_emotion():
 
 def generate_answer(question, model, tokenizer, device, system_prompt):
     emotion = generate_emotion()
-    system_prompt+=emotion
-    messages = [{
-        "role":"system",
-        "content": system_prompt
-    }, {
-        "role":"user",
-        "content": question
-    }]
+    system_prompt += emotion
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": question}
+    ]
     
+    # Форматируем чат и кодируем
     formatted_chat = tokenizer.apply_chat_template(messages, tokenize=False)
     model_inputs = tokenizer(formatted_chat, return_tensors="pt").to(device)
-
-    model_inputs
-    # model.to(device)
+    
+    # Генерация ответа
     generated_ids = model.generate(
         input_ids=model_inputs["input_ids"],
-        max_new_tokens = 1000,
-        do_sample = True,
+        max_new_tokens=1000,
+        do_sample=True
     )
     
-    decoded = tokenizer.batch_decode(generated_ids)
-    
+    # Декодируем и обрабатываем ответ
+    decoded = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
     response = decoded.replace(system_prompt, "").strip()
-    if "[INST]" in response:
-        response = response.split("[/INST]")[1].strip()
-    else:
-        response = response.strip()
     
+    # Удаляем возможные технические теги
+    if "[INST]" in response:
+        response = response.split("[/INST]")[-1].strip()
+        
     return response
+
     
