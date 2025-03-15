@@ -1,7 +1,15 @@
 from huggingface_hub import login
 import numpy as np
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16
+)
+
 
 login(token='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')
 model_name = "mistralai/Mistral-7B-Instruct-v0.2"
@@ -11,6 +19,7 @@ def load_model():
         model_name,
         torch_dtype = torch.bfloat16,
         device_map = "cuda",
+        quantization_config=bnb_config,
         trust_remote_code = True
     )
 
